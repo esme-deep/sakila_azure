@@ -1,0 +1,39 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "SakilaDF-AM"
+		},
+		"RentalBlobStorage_connectionString": {
+			"value": ""
+		},
+		"SakilaBlobStorage_connectionString": {
+			"value": ""
+		},
+		"SakilaDWH_password": {
+			"value": ""
+		},
+		"StagingSakila_password": {
+			"value": ""
+		},
+		"SakilaDWH_properties_typeProperties_server": {
+			"value": "admindemo.database.windows.net"
+		},
+		"SakilaDWH_properties_typeProperties_database": {
+			"value": "SakilaDWH"
+		},
+		"SakilaDWH_properties_typeProperties_userName": {
+			"value": "admindemo"
+		},
+		"StagingSakila_properties_typeProperties_server": {
+			"value": "admindemo.database.windows.net"
+		},
+		"StagingSakila_properties_typeProperties_database": {
+			"value": "SakilaStaging"
+		},
+		"StagingSakila_properties_typeProperties_userName": {
+			"value": "admindemo"
+		}
+	}
+}

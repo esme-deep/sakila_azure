@@ -1,0 +1,112 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "SakilaDF-AM"
+		},
+		"RentalBlobStorage_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'RentalBlobStorage'"
+		},
+		"SakilaBlobStorage_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SakilaBlobStorage'"
+		},
+		"SakilaDWH_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'SakilaDWH'"
+		},
+		"StagingSakila_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'StagingSakila'"
+		},
+		"SakilaDWH_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "admindemo.database.windows.net"
+		},
+		"SakilaDWH_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "SakilaDWH"
+		},
+		"SakilaDWH_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "admindemo"
+		},
+		"StagingSakila_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "admindemo.database.windows.net"
+		},
+		"StagingSakila_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "SakilaStaging"
+		},
+		"StagingSakila_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "admindemo"
+		},
+		"containerUri": {
+			"type": "string",
+			"metadata": "URI to storage account containing linked ARM templates"
+		},
+		"containerSasToken": {
+			"type": "string",
+			"metadata": "Sas token to storage account containing linked ARM templates"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "SakilaDF-AM_ArmTemplate_0",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2024-03-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_0.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"RentalBlobStorage_connectionString": {
+						"value": "[parameters('RentalBlobStorage_connectionString')]"
+					},
+					"SakilaBlobStorage_connectionString": {
+						"value": "[parameters('SakilaBlobStorage_connectionString')]"
+					},
+					"SakilaDWH_password": {
+						"value": "[parameters('SakilaDWH_password')]"
+					},
+					"StagingSakila_password": {
+						"value": "[parameters('StagingSakila_password')]"
+					},
+					"SakilaDWH_properties_typeProperties_server": {
+						"value": "[parameters('SakilaDWH_properties_typeProperties_server')]"
+					},
+					"SakilaDWH_properties_typeProperties_database": {
+						"value": "[parameters('SakilaDWH_properties_typeProperties_database')]"
+					},
+					"SakilaDWH_properties_typeProperties_userName": {
+						"value": "[parameters('SakilaDWH_properties_typeProperties_userName')]"
+					},
+					"StagingSakila_properties_typeProperties_server": {
+						"value": "[parameters('StagingSakila_properties_typeProperties_server')]"
+					},
+					"StagingSakila_properties_typeProperties_database": {
+						"value": "[parameters('StagingSakila_properties_typeProperties_database')]"
+					},
+					"StagingSakila_properties_typeProperties_userName": {
+						"value": "[parameters('StagingSakila_properties_typeProperties_userName')]"
+					}
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}

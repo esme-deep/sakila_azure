@@ -1,0 +1,1147 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "SakilaDF-AM"
+		},
+		"RentalBlobStorage_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'RentalBlobStorage'"
+		},
+		"SakilaBlobStorage_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SakilaBlobStorage'"
+		},
+		"SakilaDWH_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'SakilaDWH'"
+		},
+		"StagingSakila_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'StagingSakila'"
+		},
+		"SakilaDWH_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "admindemo.database.windows.net"
+		},
+		"SakilaDWH_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "SakilaDWH"
+		},
+		"SakilaDWH_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "admindemo"
+		},
+		"StagingSakila_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "admindemo.database.windows.net"
+		},
+		"StagingSakila_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "SakilaStaging"
+		},
+		"StagingSakila_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "admindemo"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/pipeline1')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "StagingFlow",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "StagingFlow",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"CustomerSource": {},
+									"RentalSource": {},
+									"InventorySource": {},
+									"FilmSource": {},
+									"Customer": {},
+									"Rental": {},
+									"Inventory": {},
+									"Film": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "DwhFlowDIMS",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "StagingFlow",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "DwhFlowDIMS",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"customerFromStaging": {},
+									"FilmFromstaging": {},
+									"CustomerDimSource": {},
+									"FilmDimSource": {},
+									"customerDIM": {},
+									"FilmDIM": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-09-23T09:45:05Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/StagingFlow')]",
+				"[concat(variables('factoryId'), '/dataflows/DwhFlowDIMS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CustomerDIM')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SakilaDWH",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "SK_customer",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "BK_customer",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "email",
+						"type": "varchar"
+					},
+					{
+						"name": "country",
+						"type": "varchar"
+					},
+					{
+						"name": "city",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Dim_Customer"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SakilaDWH')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/FilmCSV')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SakilaBlobStorage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "film.csv",
+						"container": "csvfiles"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "film_id",
+						"type": "String"
+					},
+					{
+						"name": "title",
+						"type": "String"
+					},
+					{
+						"name": "description",
+						"type": "String"
+					},
+					{
+						"name": "release_year",
+						"type": "String"
+					},
+					{
+						"name": "language_id",
+						"type": "String"
+					},
+					{
+						"name": "original_language_id",
+						"type": "String"
+					},
+					{
+						"name": "rental_duration",
+						"type": "String"
+					},
+					{
+						"name": "rental_rate",
+						"type": "String"
+					},
+					{
+						"name": "length",
+						"type": "String"
+					},
+					{
+						"name": "replacement_cost",
+						"type": "String"
+					},
+					{
+						"name": "rating",
+						"type": "String"
+					},
+					{
+						"name": "special_features",
+						"type": "String"
+					},
+					{
+						"name": "last_update",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SakilaBlobStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/FilmDim')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SakilaDWH",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "SK_film",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "BK_film",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "title",
+						"type": "varchar"
+					},
+					{
+						"name": "length_min",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "language",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Dim_Film"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SakilaDWH')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/InventoryCSV')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SakilaBlobStorage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "inventory.csv",
+						"container": "csvfiles"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "inventory_id",
+						"type": "String"
+					},
+					{
+						"name": "film_id",
+						"type": "String"
+					},
+					{
+						"name": "store_id",
+						"type": "String"
+					},
+					{
+						"name": "last_update",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SakilaBlobStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Rental')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SakilaBlobStorage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "rental.csv",
+						"container": "csvfiles"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "rental_id",
+						"type": "String"
+					},
+					{
+						"name": "rental_date",
+						"type": "String"
+					},
+					{
+						"name": "inventory_id",
+						"type": "String"
+					},
+					{
+						"name": "customer_id",
+						"type": "String"
+					},
+					{
+						"name": "return_date",
+						"type": "String"
+					},
+					{
+						"name": "staff_id",
+						"type": "String"
+					},
+					{
+						"name": "last_update",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SakilaBlobStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StagingConsumer')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "StagingSakila",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "customer_id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "store_id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "first_name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "last_name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "email",
+						"type": "nvarchar"
+					},
+					{
+						"name": "address_id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "active",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "create_date",
+						"type": "date"
+					},
+					{
+						"name": "last_update",
+						"type": "date"
+					}
+				],
+				"typeProperties": {
+					"schema": "",
+					"table": "Consumer"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/StagingSakila')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StagingFilm')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "StagingSakila",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"table": "Film"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/StagingSakila')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StagingInventory')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "StagingSakila",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"table": "Inventory"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/StagingSakila')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StagingRental')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "StagingSakila",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"table": "Rental"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/StagingSakila')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/customer')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SakilaBlobStorage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "customer.csv",
+						"container": "csvfiles"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "customer_id",
+						"type": "String"
+					},
+					{
+						"name": "store_id",
+						"type": "String"
+					},
+					{
+						"name": "first_name",
+						"type": "String"
+					},
+					{
+						"name": "last_name",
+						"type": "String"
+					},
+					{
+						"name": "email",
+						"type": "String"
+					},
+					{
+						"name": "address_id",
+						"type": "String"
+					},
+					{
+						"name": "active",
+						"type": "String"
+					},
+					{
+						"name": "create_date",
+						"type": "String"
+					},
+					{
+						"name": "last_update",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SakilaBlobStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/fact_rental')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SakilaDWH",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Fact_Rental"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SakilaDWH')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/RentalBlobStorage')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('RentalBlobStorage_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SakilaBlobStorage')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('SakilaBlobStorage_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SakilaDWH')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"server": "[parameters('SakilaDWH_properties_typeProperties_server')]",
+					"database": "[parameters('SakilaDWH_properties_typeProperties_database')]",
+					"encrypt": "mandatory",
+					"trustServerCertificate": false,
+					"authenticationType": "SQL",
+					"userName": "[parameters('SakilaDWH_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('SakilaDWH_password')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StagingSakila')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"server": "[parameters('StagingSakila_properties_typeProperties_server')]",
+					"database": "[parameters('StagingSakila_properties_typeProperties_database')]",
+					"encrypt": "mandatory",
+					"trustServerCertificate": true,
+					"authenticationType": "SQL",
+					"userName": "[parameters('StagingSakila_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('StagingSakila_password')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DwhFlowDIMS')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "StagingConsumer",
+								"type": "DatasetReference"
+							},
+							"name": "customerFromStaging"
+						},
+						{
+							"dataset": {
+								"referenceName": "StagingFilm",
+								"type": "DatasetReference"
+							},
+							"name": "FilmFromstaging"
+						},
+						{
+							"dataset": {
+								"referenceName": "CustomerDIM",
+								"type": "DatasetReference"
+							},
+							"name": "CustomerDimSource"
+						},
+						{
+							"dataset": {
+								"referenceName": "FilmDim",
+								"type": "DatasetReference"
+							},
+							"name": "FilmDimSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "CustomerDIM",
+								"type": "DatasetReference"
+							},
+							"name": "customerDIM"
+						},
+						{
+							"dataset": {
+								"referenceName": "FilmDim",
+								"type": "DatasetReference"
+							},
+							"name": "FilmDIM"
+						}
+					],
+					"transformations": [
+						{
+							"name": "exists1"
+						},
+						{
+							"name": "exists2"
+						}
+					],
+					"scriptLines": [
+						"source(output(",
+						"          customer_id as integer,",
+						"          store_id as integer,",
+						"          first_name as string,",
+						"          last_name as string,",
+						"          email as string,",
+						"          address_id as integer,",
+						"          active as integer,",
+						"          create_date as date,",
+						"          last_update as date",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     isolationLevel: 'READ_UNCOMMITTED',",
+						"     format: 'table') ~> customerFromStaging",
+						"source(output(",
+						"          film_id as integer,",
+						"          title as string,",
+						"          description as string,",
+						"          release_year as string,",
+						"          language_id as integer,",
+						"          original_language_id as integer,",
+						"          rental_duration as string,",
+						"          rental_rate as string,",
+						"          length as string,",
+						"          replacement_cost as string,",
+						"          rating as string,",
+						"          special_features as string,",
+						"          last_update as date",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     isolationLevel: 'READ_UNCOMMITTED',",
+						"     format: 'table') ~> FilmFromstaging",
+						"source(output(",
+						"          SK_customer as integer,",
+						"          BK_customer as integer,",
+						"          email as string,",
+						"          country as string,",
+						"          city as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     isolationLevel: 'READ_UNCOMMITTED',",
+						"     format: 'table') ~> CustomerDimSource",
+						"source(output(",
+						"          SK_film as integer,",
+						"          BK_film as integer,",
+						"          title as string,",
+						"          length_min as integer,",
+						"          language as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     isolationLevel: 'READ_UNCOMMITTED',",
+						"     format: 'table') ~> FilmDimSource",
+						"customerFromStaging, CustomerDimSource exists(customer_id == BK_customer",
+						"     && customerFromStaging@email == CustomerDimSource@email,",
+						"     negate:true,",
+						"     broadcast: 'auto')~> exists1",
+						"FilmFromstaging, FilmDimSource exists(film_id == BK_film",
+						"     && FilmFromstaging@title == FilmDimSource@title,",
+						"     negate:true,",
+						"     broadcast: 'auto')~> exists2",
+						"exists1 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     input(",
+						"          SK_customer as integer,",
+						"          BK_customer as integer,",
+						"          email as string,",
+						"          country as string,",
+						"          city as string",
+						"     ),",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     errorHandlingOption: 'stopOnFirstError',",
+						"     mapColumn(",
+						"          BK_customer = customer_id,",
+						"          email",
+						"     )) ~> customerDIM",
+						"exists2 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     input(",
+						"          SK_film as integer,",
+						"          BK_film as integer,",
+						"          title as string,",
+						"          length_min as integer,",
+						"          language as string",
+						"     ),",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     errorHandlingOption: 'stopOnFirstError') ~> FilmDIM"
+					]
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/StagingConsumer')]",
+				"[concat(variables('factoryId'), '/datasets/StagingFilm')]",
+				"[concat(variables('factoryId'), '/datasets/CustomerDIM')]",
+				"[concat(variables('factoryId'), '/datasets/FilmDim')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DwhFlowFact')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "StagingRental",
+								"type": "DatasetReference"
+							},
+							"name": "sourceStagingRental"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "fact_rental",
+								"type": "DatasetReference"
+							},
+							"name": "rentalfact"
+						}
+					],
+					"transformations": [],
+					"scriptLines": [
+						"source(output(",
+						"          rental_id as integer,",
+						"          rental_date as date,",
+						"          inventory_id as integer,",
+						"          customer_id as integer,",
+						"          return_date as date,",
+						"          staff_id as integer,",
+						"          last_update as date",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     isolationLevel: 'READ_UNCOMMITTED',",
+						"     format: 'table') ~> sourceStagingRental",
+						"sourceStagingRental sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     errorHandlingOption: 'stopOnFirstError',",
+						"     mapColumn(",
+						"          rental_id,",
+						"          rental_date,",
+						"          inventory_id,",
+						"          customer_id,",
+						"          return_date,",
+						"          staff_id,",
+						"          last_update",
+						"     )) ~> rentalfact"
+					]
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/StagingRental')]",
+				"[concat(variables('factoryId'), '/datasets/fact_rental')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StagingFlow')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "customer",
+								"type": "DatasetReference"
+							},
+							"name": "CustomerSource"
+						},
+						{
+							"dataset": {
+								"referenceName": "Rental",
+								"type": "DatasetReference"
+							},
+							"name": "RentalSource"
+						},
+						{
+							"dataset": {
+								"referenceName": "InventoryCSV",
+								"type": "DatasetReference"
+							},
+							"name": "InventorySource"
+						},
+						{
+							"dataset": {
+								"referenceName": "FilmCSV",
+								"type": "DatasetReference"
+							},
+							"name": "FilmSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "StagingConsumer",
+								"type": "DatasetReference"
+							},
+							"name": "Customer"
+						},
+						{
+							"dataset": {
+								"referenceName": "StagingRental",
+								"type": "DatasetReference"
+							},
+							"name": "Rental"
+						},
+						{
+							"dataset": {
+								"referenceName": "StagingInventory",
+								"type": "DatasetReference"
+							},
+							"name": "Inventory"
+						},
+						{
+							"dataset": {
+								"referenceName": "StagingFilm",
+								"type": "DatasetReference"
+							},
+							"name": "Film"
+						}
+					],
+					"transformations": [],
+					"scriptLines": [
+						"source(output(",
+						"          customer_id as integer,",
+						"          store_id as integer,",
+						"          first_name as string,",
+						"          last_name as string,",
+						"          email as string,",
+						"          address_id as integer,",
+						"          active as integer,",
+						"          create_date as date,",
+						"          last_update as date",
+						"     ),",
+						"     allowSchemaDrift: false,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: false) ~> CustomerSource",
+						"source(output(",
+						"          rental_id as integer,",
+						"          rental_date as date,",
+						"          inventory_id as integer,",
+						"          customer_id as integer,",
+						"          return_date as date,",
+						"          staff_id as integer,",
+						"          last_update as date",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: false) ~> RentalSource",
+						"source(output(",
+						"          inventory_id as integer,",
+						"          film_id as integer,",
+						"          store_id as integer,",
+						"          last_update as date",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: false) ~> InventorySource",
+						"source(output(",
+						"          film_id as integer,",
+						"          title as string,",
+						"          description as string,",
+						"          release_year as string,",
+						"          language_id as integer,",
+						"          original_language_id as integer,",
+						"          rental_duration as string,",
+						"          rental_rate as string,",
+						"          length as string,",
+						"          replacement_cost as string,",
+						"          rating as string,",
+						"          special_features as string,",
+						"          last_update as date",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: false) ~> FilmSource",
+						"CustomerSource sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     input(",
+						"          customer_id as integer,",
+						"          store_id as integer,",
+						"          first_name as string,",
+						"          last_name as string,",
+						"          email as string,",
+						"          address_id as integer,",
+						"          active as integer,",
+						"          create_date as date,",
+						"          last_update as date",
+						"     ),",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     recreate:true,",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     errorHandlingOption: 'stopOnFirstError') ~> Customer",
+						"RentalSource sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     recreate:true,",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     errorHandlingOption: 'stopOnFirstError') ~> Rental",
+						"InventorySource sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     recreate:true,",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     errorHandlingOption: 'stopOnFirstError') ~> Inventory",
+						"FilmSource sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     errorHandlingOption: 'stopOnFirstError',",
+						"     mapColumn(",
+						"          film_id,",
+						"          title,",
+						"          description,",
+						"          release_year,",
+						"          language_id,",
+						"          original_language_id,",
+						"          rental_duration,",
+						"          rental_rate,",
+						"          length,",
+						"          replacement_cost,",
+						"          rating,",
+						"          special_features,",
+						"          last_update",
+						"     )) ~> Film"
+					]
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/customer')]",
+				"[concat(variables('factoryId'), '/datasets/Rental')]",
+				"[concat(variables('factoryId'), '/datasets/InventoryCSV')]",
+				"[concat(variables('factoryId'), '/datasets/FilmCSV')]",
+				"[concat(variables('factoryId'), '/datasets/StagingConsumer')]",
+				"[concat(variables('factoryId'), '/datasets/StagingRental')]",
+				"[concat(variables('factoryId'), '/datasets/StagingInventory')]",
+				"[concat(variables('factoryId'), '/datasets/StagingFilm')]"
+			]
+		}
+	]
+}
