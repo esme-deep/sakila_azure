@@ -10,6 +10,27 @@
 						"type": "DatasetReference"
 					},
 					"name": "sourceStagingRental"
+				},
+				{
+					"dataset": {
+						"referenceName": "fact_rental",
+						"type": "DatasetReference"
+					},
+					"name": "factRental"
+				},
+				{
+					"dataset": {
+						"referenceName": "FilmDim",
+						"type": "DatasetReference"
+					},
+					"name": "DIMFILM"
+				},
+				{
+					"dataset": {
+						"referenceName": "StagingInventory",
+						"type": "DatasetReference"
+					},
+					"name": "inventoryStaging"
 				}
 			],
 			"sinks": [
@@ -21,7 +42,17 @@
 					"name": "rentalfact"
 				}
 			],
-			"transformations": [],
+			"transformations": [
+				{
+					"name": "joinInvetory"
+				},
+				{
+					"name": "select1"
+				},
+				{
+					"name": "lookup1"
+				}
+			],
 			"scriptLines": [
 				"source(output(",
 				"          rental_id as integer,",
@@ -36,8 +67,86 @@
 				"     validateSchema: false,",
 				"     isolationLevel: 'READ_UNCOMMITTED',",
 				"     format: 'table') ~> sourceStagingRental",
-				"sourceStagingRental sink(allowSchemaDrift: true,",
+				"source(output(",
+				"          row_id as integer,",
+				"          BK_inventory as integer,",
+				"          BK_rental as integer,",
+				"          BK_payment as integer,",
+				"          total_payment as decimal(15,2),",
+				"          datekey_rental as integer,",
+				"          datekey_return as integer,",
+				"          datekey_payment as integer,",
+				"          SK_customer as integer,",
+				"          SK_staff as integer,",
+				"          SK_store as integer,",
+				"          SK_film as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> factRental",
+				"source(output(",
+				"          SK_film as integer,",
+				"          BK_film as integer,",
+				"          title as string,",
+				"          length_min as integer,",
+				"          language as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> DIMFILM",
+				"source(output(",
+				"          inventory_id as integer,",
+				"          film_id as integer,",
+				"          store_id as integer,",
+				"          last_update as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> inventoryStaging",
+				"sourceStagingRental, inventoryStaging join(sourceStagingRental@inventory_id == inventoryStaging@inventory_id,",
+				"     joinType:'inner',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> joinInvetory",
+				"joinInvetory select(mapColumn(",
+				"          rental_id,",
+				"          rental_date,",
+				"          inventory_id = sourceStagingRental@inventory_id,",
+				"          customer_id,",
+				"          return_date,",
+				"          staff_id,",
+				"          last_update = sourceStagingRental@last_update,",
+				"          inventory_id = inventoryStaging@inventory_id,",
+				"          film_id,",
+				"          store_id,",
+				"          last_update = inventoryStaging@last_update",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select1",
+				"select1, DIMFILM lookup(film_id == BK_film,",
+				"     multiple: false,",
+				"     pickup: 'last',",
+				"     asc(BK_film, true),",
+				"     broadcast: 'auto')~> lookup1",
+				"lookup1 sink(allowSchemaDrift: false,",
+				"     validateSchema: false,",
+				"     input(",
+				"          row_id as integer,",
+				"          BK_inventory as integer,",
+				"          BK_rental as integer,",
+				"          BK_payment as integer,",
+				"          total_payment as decimal(15,2),",
+				"          datekey_rental as integer,",
+				"          datekey_return as integer,",
+				"          datekey_payment as integer,",
+				"          SK_customer as integer,",
+				"          SK_staff as integer,",
+				"          SK_store as integer,",
+				"          SK_film as integer",
+				"     ),",
 				"     deletable:false,",
 				"     insertable:true,",
 				"     updateable:false,",
@@ -47,13 +156,10 @@
 				"     skipDuplicateMapOutputs: true,",
 				"     errorHandlingOption: 'stopOnFirstError',",
 				"     mapColumn(",
-				"          rental_id,",
-				"          rental_date,",
-				"          inventory_id,",
-				"          customer_id,",
-				"          return_date,",
-				"          staff_id,",
-				"          last_update",
+				"          BK_rental = rental_id,",
+				"          BK_inventory = inventory_id,",
+				"          SK_customer = customer_id,",
+				"          SK_film = return_date",
 				"     )) ~> rentalfact"
 			]
 		}

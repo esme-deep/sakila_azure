@@ -159,7 +159,12 @@
 				"     format: 'table',",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true,",
-				"     errorHandlingOption: 'stopOnFirstError') ~> FilmDIM"
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          BK_film = film_id,",
+				"          title,",
+				"          language = language_id",
+				"     )) ~> FilmDIM"
 			]
 		}
 	}
