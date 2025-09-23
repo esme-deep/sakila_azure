@@ -1,0 +1,193 @@
+{
+	"name": "StagingFlow",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "customer",
+						"type": "DatasetReference"
+					},
+					"name": "CustomerSource"
+				},
+				{
+					"dataset": {
+						"referenceName": "Rental",
+						"type": "DatasetReference"
+					},
+					"name": "RentalSource"
+				},
+				{
+					"dataset": {
+						"referenceName": "InventoryCSV",
+						"type": "DatasetReference"
+					},
+					"name": "InventorySource"
+				},
+				{
+					"dataset": {
+						"referenceName": "FilmCSV",
+						"type": "DatasetReference"
+					},
+					"name": "FilmSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "StagingConsumer",
+						"type": "DatasetReference"
+					},
+					"name": "Customer"
+				},
+				{
+					"dataset": {
+						"referenceName": "StagingRental",
+						"type": "DatasetReference"
+					},
+					"name": "Rental"
+				},
+				{
+					"dataset": {
+						"referenceName": "StagingInventory",
+						"type": "DatasetReference"
+					},
+					"name": "Inventory"
+				},
+				{
+					"dataset": {
+						"referenceName": "StagingFilm",
+						"type": "DatasetReference"
+					},
+					"name": "Film"
+				}
+			],
+			"transformations": [],
+			"scriptLines": [
+				"source(output(",
+				"          customer_id as integer,",
+				"          store_id as integer,",
+				"          first_name as string,",
+				"          last_name as string,",
+				"          email as string,",
+				"          address_id as integer,",
+				"          active as integer,",
+				"          create_date as date,",
+				"          last_update as date",
+				"     ),",
+				"     allowSchemaDrift: false,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> CustomerSource",
+				"source(output(",
+				"          rental_id as integer,",
+				"          rental_date as date,",
+				"          inventory_id as integer,",
+				"          customer_id as integer,",
+				"          return_date as date,",
+				"          staff_id as integer,",
+				"          last_update as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> RentalSource",
+				"source(output(",
+				"          inventory_id as integer,",
+				"          film_id as integer,",
+				"          store_id as integer,",
+				"          last_update as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> InventorySource",
+				"source(output(",
+				"          film_id as integer,",
+				"          title as string,",
+				"          description as string,",
+				"          release_year as string,",
+				"          language_id as integer,",
+				"          original_language_id as integer,",
+				"          rental_duration as string,",
+				"          rental_rate as string,",
+				"          length as string,",
+				"          replacement_cost as string,",
+				"          rating as string,",
+				"          special_features as string,",
+				"          last_update as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> FilmSource",
+				"CustomerSource sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          customer_id as integer,",
+				"          store_id as integer,",
+				"          first_name as string,",
+				"          last_name as string,",
+				"          email as string,",
+				"          address_id as integer,",
+				"          active as integer,",
+				"          create_date as date,",
+				"          last_update as date",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     recreate:true,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> Customer",
+				"RentalSource sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     recreate:true,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> Rental",
+				"InventorySource sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     recreate:true,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> Inventory",
+				"FilmSource sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          film_id,",
+				"          title,",
+				"          description,",
+				"          release_year,",
+				"          language_id,",
+				"          original_language_id,",
+				"          rental_duration,",
+				"          rental_rate,",
+				"          length,",
+				"          replacement_cost,",
+				"          rating,",
+				"          special_features,",
+				"          last_update",
+				"     )) ~> Film"
+			]
+		}
+	}
+}

@@ -1,0 +1,17 @@
+{
+	"name": "fact_rental",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "SakilaDWH",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "Fact_Rental"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

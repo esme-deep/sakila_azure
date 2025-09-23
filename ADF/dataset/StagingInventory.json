@@ -1,0 +1,16 @@
+{
+	"name": "StagingInventory",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "StagingSakila",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"table": "Inventory"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,166 @@
+{
+	"name": "DwhFlowDIMS",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "StagingConsumer",
+						"type": "DatasetReference"
+					},
+					"name": "customerFromStaging"
+				},
+				{
+					"dataset": {
+						"referenceName": "StagingFilm",
+						"type": "DatasetReference"
+					},
+					"name": "FilmFromstaging"
+				},
+				{
+					"dataset": {
+						"referenceName": "CustomerDIM",
+						"type": "DatasetReference"
+					},
+					"name": "CustomerDimSource"
+				},
+				{
+					"dataset": {
+						"referenceName": "FilmDim",
+						"type": "DatasetReference"
+					},
+					"name": "FilmDimSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "CustomerDIM",
+						"type": "DatasetReference"
+					},
+					"name": "customerDIM"
+				},
+				{
+					"dataset": {
+						"referenceName": "FilmDim",
+						"type": "DatasetReference"
+					},
+					"name": "FilmDIM"
+				}
+			],
+			"transformations": [
+				{
+					"name": "exists1"
+				},
+				{
+					"name": "exists2"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          customer_id as integer,",
+				"          store_id as integer,",
+				"          first_name as string,",
+				"          last_name as string,",
+				"          email as string,",
+				"          address_id as integer,",
+				"          active as integer,",
+				"          create_date as date,",
+				"          last_update as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> customerFromStaging",
+				"source(output(",
+				"          film_id as integer,",
+				"          title as string,",
+				"          description as string,",
+				"          release_year as string,",
+				"          language_id as integer,",
+				"          original_language_id as integer,",
+				"          rental_duration as string,",
+				"          rental_rate as string,",
+				"          length as string,",
+				"          replacement_cost as string,",
+				"          rating as string,",
+				"          special_features as string,",
+				"          last_update as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> FilmFromstaging",
+				"source(output(",
+				"          SK_customer as integer,",
+				"          BK_customer as integer,",
+				"          email as string,",
+				"          country as string,",
+				"          city as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> CustomerDimSource",
+				"source(output(",
+				"          SK_film as integer,",
+				"          BK_film as integer,",
+				"          title as string,",
+				"          length_min as integer,",
+				"          language as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> FilmDimSource",
+				"customerFromStaging, CustomerDimSource exists(customer_id == BK_customer",
+				"     && customerFromStaging@email == CustomerDimSource@email,",
+				"     negate:true,",
+				"     broadcast: 'auto')~> exists1",
+				"FilmFromstaging, FilmDimSource exists(film_id == BK_film",
+				"     && FilmFromstaging@title == FilmDimSource@title,",
+				"     negate:true,",
+				"     broadcast: 'auto')~> exists2",
+				"exists1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          SK_customer as integer,",
+				"          BK_customer as integer,",
+				"          email as string,",
+				"          country as string,",
+				"          city as string",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          BK_customer = customer_id,",
+				"          email",
+				"     )) ~> customerDIM",
+				"exists2 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          SK_film as integer,",
+				"          BK_film as integer,",
+				"          title as string,",
+				"          length_min as integer,",
+				"          language as string",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> FilmDIM"
+			]
+		}
+	}
+}

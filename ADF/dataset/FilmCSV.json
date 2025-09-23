@@ -1,0 +1,77 @@
+{
+	"name": "FilmCSV",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "SakilaBlobStorage",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": "film.csv",
+				"container": "csvfiles"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "film_id",
+				"type": "String"
+			},
+			{
+				"name": "title",
+				"type": "String"
+			},
+			{
+				"name": "description",
+				"type": "String"
+			},
+			{
+				"name": "release_year",
+				"type": "String"
+			},
+			{
+				"name": "language_id",
+				"type": "String"
+			},
+			{
+				"name": "original_language_id",
+				"type": "String"
+			},
+			{
+				"name": "rental_duration",
+				"type": "String"
+			},
+			{
+				"name": "rental_rate",
+				"type": "String"
+			},
+			{
+				"name": "length",
+				"type": "String"
+			},
+			{
+				"name": "replacement_cost",
+				"type": "String"
+			},
+			{
+				"name": "rating",
+				"type": "String"
+			},
+			{
+				"name": "special_features",
+				"type": "String"
+			},
+			{
+				"name": "last_update",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

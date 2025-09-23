@@ -1,0 +1,9 @@
+{
+	"name": "SakilaDF-AM",
+	"location": "germanywestcentral",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "74384752-e84f-4208-b18c-fd825486fd3b",
+		"tenantId": "72db22d5-53b6-493c-bbb2-f36644f1f812"
+	}
+}

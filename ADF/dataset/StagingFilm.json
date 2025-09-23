@@ -1,0 +1,16 @@
+{
+	"name": "StagingFilm",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "StagingSakila",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"table": "Film"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,61 @@
+{
+	"name": "DwhFlowFact",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "StagingRental",
+						"type": "DatasetReference"
+					},
+					"name": "sourceStagingRental"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "fact_rental",
+						"type": "DatasetReference"
+					},
+					"name": "rentalfact"
+				}
+			],
+			"transformations": [],
+			"scriptLines": [
+				"source(output(",
+				"          rental_id as integer,",
+				"          rental_date as date,",
+				"          inventory_id as integer,",
+				"          customer_id as integer,",
+				"          return_date as date,",
+				"          staff_id as integer,",
+				"          last_update as date",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> sourceStagingRental",
+				"sourceStagingRental sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          rental_id,",
+				"          rental_date,",
+				"          inventory_id,",
+				"          customer_id,",
+				"          return_date,",
+				"          staff_id,",
+				"          last_update",
+				"     )) ~> rentalfact"
+			]
+		}
+	}
+}

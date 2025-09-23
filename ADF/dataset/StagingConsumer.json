@@ -1,0 +1,58 @@
+{
+	"name": "StagingConsumer",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "StagingSakila",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "customer_id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "store_id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "first_name",
+				"type": "nvarchar"
+			},
+			{
+				"name": "last_name",
+				"type": "nvarchar"
+			},
+			{
+				"name": "email",
+				"type": "nvarchar"
+			},
+			{
+				"name": "address_id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "active",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "create_date",
+				"type": "date"
+			},
+			{
+				"name": "last_update",
+				"type": "date"
+			}
+		],
+		"typeProperties": {
+			"schema": "",
+			"table": "Consumer"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
