@@ -163,7 +163,8 @@
 				"     mapColumn(",
 				"          BK_film = film_id,",
 				"          title,",
-				"          language = language_id",
+				"          language = language_id,",
+				"          length_min = length",
 				"     )) ~> FilmDIM"
 			]
 		}
