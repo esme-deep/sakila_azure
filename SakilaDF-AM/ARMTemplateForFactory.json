@@ -61,6 +61,8 @@
 					{
 						"name": "StagingFlow",
 						"type": "ExecuteDataFlow",
+						"state": "Inactive",
+						"onInactiveMarkAs": "Succeeded",
 						"dependsOn": [],
 						"policy": {
 							"timeout": "0.12:00:00",
@@ -97,6 +99,8 @@
 					{
 						"name": "DwhFlowDIMS",
 						"type": "ExecuteDataFlow",
+						"state": "Inactive",
+						"onInactiveMarkAs": "Succeeded",
 						"dependsOn": [
 							{
 								"activity": "StagingFlow",
@@ -134,6 +138,47 @@
 							},
 							"traceLevel": "Fine"
 						}
+					},
+					{
+						"name": "DwhFlowFact",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "DwhFlowDIMS",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "DwhFlowFact",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"sourceStagingRental": {},
+									"factRental": {},
+									"DIMFILM": {},
+									"inventoryStaging": {},
+									"DimCunstomer": {},
+									"rentalfact": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
 					}
 				],
 				"policy": {
@@ -144,7 +189,8 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/dataflows/StagingFlow')]",
-				"[concat(variables('factoryId'), '/dataflows/DwhFlowDIMS')]"
+				"[concat(variables('factoryId'), '/dataflows/DwhFlowDIMS')]",
+				"[concat(variables('factoryId'), '/dataflows/DwhFlowFact')]"
 			]
 		},
 		{
@@ -617,7 +663,44 @@
 				},
 				"annotations": [],
 				"type": "AzureSqlTable",
-				"schema": [],
+				"schema": [
+					{
+						"name": "row_id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "BK_inventory",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "BK_rental",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "BK_payment",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "total_payment",
+						"type": "decimal",
+						"precision": 15,
+						"scale": 2
+					},
+					{
+						"name": "SK_customer",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "SK_film",
+						"type": "int",
+						"precision": 10
+					}
+				],
 				"typeProperties": {
 					"schema": "dbo",
 					"table": "Fact_Rental"
@@ -860,7 +943,13 @@
 						"     format: 'table',",
 						"     skipDuplicateMapInputs: true,",
 						"     skipDuplicateMapOutputs: true,",
-						"     errorHandlingOption: 'stopOnFirstError') ~> FilmDIM"
+						"     errorHandlingOption: 'stopOnFirstError',",
+						"     mapColumn(",
+						"          BK_film = film_id,",
+						"          title,",
+						"          language = language_id,",
+						"          length_min = length",
+						"     )) ~> FilmDIM"
 					]
 				}
 			},
@@ -885,6 +974,34 @@
 								"type": "DatasetReference"
 							},
 							"name": "sourceStagingRental"
+						},
+						{
+							"dataset": {
+								"referenceName": "fact_rental",
+								"type": "DatasetReference"
+							},
+							"name": "factRental"
+						},
+						{
+							"dataset": {
+								"referenceName": "FilmDim",
+								"type": "DatasetReference"
+							},
+							"name": "DIMFILM"
+						},
+						{
+							"dataset": {
+								"referenceName": "StagingInventory",
+								"type": "DatasetReference"
+							},
+							"name": "inventoryStaging"
+						},
+						{
+							"dataset": {
+								"referenceName": "CustomerDIM",
+								"type": "DatasetReference"
+							},
+							"name": "DimCunstomer"
 						}
 					],
 					"sinks": [
@@ -896,7 +1013,35 @@
 							"name": "rentalfact"
 						}
 					],
-					"transformations": [],
+					"transformations": [
+						{
+							"name": "joinInvetory"
+						},
+						{
+							"name": "select1"
+						},
+						{
+							"name": "lookup1"
+						},
+						{
+							"name": "join1"
+						},
+						{
+							"name": "select2"
+						},
+						{
+							"name": "filmchecked"
+						},
+						{
+							"name": "lookup2"
+						},
+						{
+							"name": "lookup3"
+						},
+						{
+							"name": "select3"
+						}
+					],
 					"scriptLines": [
 						"source(output(",
 						"          rental_id as integer,",
@@ -911,8 +1056,134 @@
 						"     validateSchema: false,",
 						"     isolationLevel: 'READ_UNCOMMITTED',",
 						"     format: 'table') ~> sourceStagingRental",
-						"sourceStagingRental sink(allowSchemaDrift: true,",
+						"source(output(",
+						"          row_id as integer,",
+						"          BK_inventory as integer,",
+						"          BK_rental as integer,",
+						"          BK_payment as integer,",
+						"          total_payment as decimal(15,2),",
+						"          SK_customer as integer,",
+						"          SK_film as integer",
+						"     ),",
+						"     allowSchemaDrift: true,",
 						"     validateSchema: false,",
+						"     isolationLevel: 'READ_UNCOMMITTED',",
+						"     format: 'table') ~> factRental",
+						"source(output(",
+						"          SK_film as integer,",
+						"          BK_film as integer,",
+						"          title as string,",
+						"          length_min as integer,",
+						"          language as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     isolationLevel: 'READ_UNCOMMITTED',",
+						"     format: 'table') ~> DIMFILM",
+						"source(output(",
+						"          inventory_id as integer,",
+						"          film_id as integer,",
+						"          store_id as integer,",
+						"          last_update as date",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     isolationLevel: 'READ_UNCOMMITTED',",
+						"     format: 'table') ~> inventoryStaging",
+						"source(output(",
+						"          SK_customer as integer,",
+						"          BK_customer as integer,",
+						"          email as string,",
+						"          country as string,",
+						"          city as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     isolationLevel: 'READ_UNCOMMITTED',",
+						"     format: 'table') ~> DimCunstomer",
+						"sourceStagingRental, inventoryStaging join(sourceStagingRental@inventory_id == inventoryStaging@inventory_id,",
+						"     joinType:'inner',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> joinInvetory",
+						"lookup3 select(mapColumn(",
+						"          rental_id,",
+						"          film_id = select3@film_id,",
+						"          inventory_id = select3@inventory_id,",
+						"          customer_id,",
+						"          last_update = select3@last_update",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> select1",
+						"select1, DIMFILM lookup(film_id == BK_film,",
+						"     multiple: false,",
+						"     pickup: 'first',",
+						"     desc(BK_film, false),",
+						"     broadcast: 'auto')~> lookup1",
+						"select2, DIMFILM join(select2@SK_film == DIMFILM@SK_film,",
+						"     joinType:'inner',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> join1",
+						"lookup1 select(mapColumn(",
+						"          rental_id,",
+						"          inventory_id,",
+						"          customer_id,",
+						"          last_update,",
+						"          film_id,",
+						"          SK_film,",
+						"          BK_film,",
+						"          title,",
+						"          length_min,",
+						"          language",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> select2",
+						"join1 select(mapColumn(",
+						"          rental_id,",
+						"          inventory_id,",
+						"          customer_id,",
+						"          last_update,",
+						"          film_id,",
+						"          SK_film = DIMFILM@SK_film,",
+						"          BK_film = DIMFILM@BK_film,",
+						"          title = DIMFILM@title,",
+						"          length_min = DIMFILM@length_min,",
+						"          language = DIMFILM@language",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> filmchecked",
+						"filmchecked, DimCunstomer lookup(customer_id == BK_customer,",
+						"     multiple: false,",
+						"     pickup: 'first',",
+						"     desc(BK_customer, false),",
+						"     broadcast: 'auto')~> lookup2",
+						"select3, inventoryStaging lookup(select3@inventory_id == inventoryStaging@inventory_id,",
+						"     multiple: false,",
+						"     pickup: 'first',",
+						"     desc(inventoryStaging@inventory_id, false),",
+						"     broadcast: 'auto')~> lookup3",
+						"joinInvetory select(mapColumn(",
+						"          rental_id,",
+						"          rental_date,",
+						"          inventory_id = sourceStagingRental@inventory_id,",
+						"          customer_id,",
+						"          last_update = sourceStagingRental@last_update,",
+						"          film_id",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> select3",
+						"lookup2 sink(allowSchemaDrift: false,",
+						"     validateSchema: false,",
+						"     input(",
+						"          row_id as integer,",
+						"          BK_inventory as integer,",
+						"          BK_rental as integer,",
+						"          BK_payment as integer,",
+						"          total_payment as decimal(15,2),",
+						"          SK_customer as integer,",
+						"          SK_film as integer",
+						"     ),",
 						"     deletable:false,",
 						"     insertable:true,",
 						"     updateable:false,",
@@ -922,20 +1193,20 @@
 						"     skipDuplicateMapOutputs: true,",
 						"     errorHandlingOption: 'stopOnFirstError',",
 						"     mapColumn(",
-						"          rental_id,",
-						"          rental_date,",
-						"          inventory_id,",
-						"          customer_id,",
-						"          return_date,",
-						"          staff_id,",
-						"          last_update",
+						"          BK_inventory = inventory_id,",
+						"          BK_rental = rental_id,",
+						"          SK_customer,",
+						"          SK_film",
 						"     )) ~> rentalfact"
 					]
 				}
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/StagingRental')]",
-				"[concat(variables('factoryId'), '/datasets/fact_rental')]"
+				"[concat(variables('factoryId'), '/datasets/fact_rental')]",
+				"[concat(variables('factoryId'), '/datasets/FilmDim')]",
+				"[concat(variables('factoryId'), '/datasets/StagingInventory')]",
+				"[concat(variables('factoryId'), '/datasets/CustomerDIM')]"
 			]
 		},
 		{
