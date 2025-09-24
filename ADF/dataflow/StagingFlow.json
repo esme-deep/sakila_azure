@@ -31,6 +31,13 @@
 						"type": "DatasetReference"
 					},
 					"name": "FilmSource"
+				},
+				{
+					"dataset": {
+						"referenceName": "PAYMENTCSV",
+						"type": "DatasetReference"
+					},
+					"name": "paymentSource"
 				}
 			],
 			"sinks": [
@@ -61,6 +68,13 @@
 						"type": "DatasetReference"
 					},
 					"name": "Film"
+				},
+				{
+					"dataset": {
+						"referenceName": "StagingPayment",
+						"type": "DatasetReference"
+					},
+					"name": "stagingpayment"
 				}
 			],
 			"transformations": [],
@@ -118,6 +132,18 @@
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     ignoreNoFilesFound: false) ~> FilmSource",
+				"source(output(",
+				"          payment_id as integer,",
+				"          customer_id as integer,",
+				"          staff_id as string,",
+				"          rental_id as integer,",
+				"          amount as string,",
+				"          payment_date as string,",
+				"          last_update as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> paymentSource",
 				"CustomerSource sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
@@ -186,7 +212,24 @@
 				"          rating,",
 				"          special_features,",
 				"          last_update",
-				"     )) ~> Film"
+				"     )) ~> Film",
+				"paymentSource sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     recreate:true,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          payment_id,",
+				"          customer_id,",
+				"          rental_id,",
+				"          amount",
+				"     )) ~> stagingpayment"
 			]
 		}
 	}

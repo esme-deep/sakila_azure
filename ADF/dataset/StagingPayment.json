@@ -1,0 +1,15 @@
+{
+	"name": "StagingPayment",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "StagingSakila",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"table": "Payment"
+		}
+	}
+}
