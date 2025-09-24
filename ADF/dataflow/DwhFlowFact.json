@@ -38,6 +38,13 @@
 						"type": "DatasetReference"
 					},
 					"name": "DimCunstomer"
+				},
+				{
+					"dataset": {
+						"referenceName": "StagingPayment",
+						"type": "DatasetReference"
+					},
+					"name": "payementinfo"
 				}
 			],
 			"sinks": [
@@ -76,6 +83,12 @@
 				},
 				{
 					"name": "select3"
+				},
+				{
+					"name": "join2"
+				},
+				{
+					"name": "select4"
 				}
 			],
 			"scriptLines": [
@@ -137,6 +150,16 @@
 				"     validateSchema: false,",
 				"     isolationLevel: 'READ_UNCOMMITTED',",
 				"     format: 'table') ~> DimCunstomer",
+				"source(output(",
+				"          payment_id as integer,",
+				"          customer_id as integer,",
+				"          rental_id as integer,",
+				"          amount as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> payementinfo",
 				"sourceStagingRental, inventoryStaging join(sourceStagingRental@inventory_id == inventoryStaging@inventory_id,",
 				"     joinType:'inner',",
 				"     matchType:'exact',",
@@ -209,7 +232,27 @@
 				"     ),",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true) ~> select3",
-				"lookup2 sink(allowSchemaDrift: false,",
+				"lookup2, payementinfo join(filmchecked@rental_id == payementinfo@rental_id,",
+				"     joinType:'inner',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> join2",
+				"join2 select(mapColumn(",
+				"          rental_id = filmchecked@rental_id,",
+				"          inventory_id,",
+				"          customer_id = filmchecked@customer_id,",
+				"          last_update,",
+				"          film_id,",
+				"          SK_film,",
+				"          BK_film,",
+				"          SK_customer,",
+				"          BK_customer,",
+				"          amount,",
+				"          payment_id",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select4",
+				"select4 sink(allowSchemaDrift: false,",
 				"     validateSchema: false,",
 				"     input(",
 				"          row_id as integer,",
@@ -232,7 +275,9 @@
 				"          BK_inventory = inventory_id,",
 				"          BK_rental = rental_id,",
 				"          SK_customer,",
-				"          SK_film",
+				"          SK_film,",
+				"          total_payment = amount,",
+				"          BK_payment = payment_id",
 				"     )) ~> rentalfact"
 			]
 		}
