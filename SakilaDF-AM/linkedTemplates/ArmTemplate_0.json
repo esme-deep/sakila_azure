@@ -338,6 +338,63 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/PAYMENTCSV')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SakilaBlobStorage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "payment.csv",
+						"container": "csvfiles"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "payment_id",
+						"type": "String"
+					},
+					{
+						"name": "customer_id",
+						"type": "String"
+					},
+					{
+						"name": "staff_id",
+						"type": "String"
+					},
+					{
+						"name": "rental_id",
+						"type": "String"
+					},
+					{
+						"name": "amount",
+						"type": "String"
+					},
+					{
+						"name": "payment_date",
+						"type": "String"
+					},
+					{
+						"name": "last_update",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SakilaBlobStorage')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Rental')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -490,6 +547,26 @@
 				"schema": [],
 				"typeProperties": {
 					"table": "Inventory"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/StagingSakila')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StagingPayment')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "StagingSakila",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"table": "Payment"
 				}
 			},
 			"dependsOn": [
@@ -1103,6 +1180,13 @@
 								"type": "DatasetReference"
 							},
 							"name": "FilmSource"
+						},
+						{
+							"dataset": {
+								"referenceName": "PAYMENTCSV",
+								"type": "DatasetReference"
+							},
+							"name": "paymentSource"
 						}
 					],
 					"sinks": [
@@ -1133,6 +1217,13 @@
 								"type": "DatasetReference"
 							},
 							"name": "Film"
+						},
+						{
+							"dataset": {
+								"referenceName": "StagingPayment",
+								"type": "DatasetReference"
+							},
+							"name": "stagingpayment"
 						}
 					],
 					"transformations": [],
@@ -1190,6 +1281,18 @@
 						"     allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     ignoreNoFilesFound: false) ~> FilmSource",
+						"source(output(",
+						"          payment_id as integer,",
+						"          customer_id as integer,",
+						"          staff_id as string,",
+						"          rental_id as integer,",
+						"          amount as string,",
+						"          payment_date as string,",
+						"          last_update as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: false) ~> paymentSource",
 						"CustomerSource sink(allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     input(",
@@ -1258,7 +1361,24 @@
 						"          rating,",
 						"          special_features,",
 						"          last_update",
-						"     )) ~> Film"
+						"     )) ~> Film",
+						"paymentSource sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     recreate:true,",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     errorHandlingOption: 'stopOnFirstError',",
+						"     mapColumn(",
+						"          payment_id,",
+						"          customer_id,",
+						"          rental_id,",
+						"          amount",
+						"     )) ~> stagingpayment"
 					]
 				}
 			},
@@ -1267,151 +1387,12 @@
 				"[concat(variables('factoryId'), '/datasets/Rental')]",
 				"[concat(variables('factoryId'), '/datasets/InventoryCSV')]",
 				"[concat(variables('factoryId'), '/datasets/FilmCSV')]",
+				"[concat(variables('factoryId'), '/datasets/PAYMENTCSV')]",
 				"[concat(variables('factoryId'), '/datasets/StagingConsumer')]",
 				"[concat(variables('factoryId'), '/datasets/StagingRental')]",
 				"[concat(variables('factoryId'), '/datasets/StagingInventory')]",
-				"[concat(variables('factoryId'), '/datasets/StagingFilm')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/pipeline1')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "StagingFlow",
-						"type": "ExecuteDataFlow",
-						"state": "Inactive",
-						"onInactiveMarkAs": "Succeeded",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataflow": {
-								"referenceName": "StagingFlow",
-								"type": "DataFlowReference",
-								"parameters": {},
-								"datasetParameters": {
-									"CustomerSource": {},
-									"RentalSource": {},
-									"InventorySource": {},
-									"FilmSource": {},
-									"Customer": {},
-									"Rental": {},
-									"Inventory": {},
-									"Film": {}
-								}
-							},
-							"staging": {},
-							"compute": {
-								"coreCount": 8,
-								"computeType": "General"
-							},
-							"traceLevel": "Fine"
-						}
-					},
-					{
-						"name": "DwhFlowDIMS",
-						"type": "ExecuteDataFlow",
-						"state": "Inactive",
-						"onInactiveMarkAs": "Succeeded",
-						"dependsOn": [
-							{
-								"activity": "StagingFlow",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataflow": {
-								"referenceName": "DwhFlowDIMS",
-								"type": "DataFlowReference",
-								"parameters": {},
-								"datasetParameters": {
-									"customerFromStaging": {},
-									"FilmFromstaging": {},
-									"CustomerDimSource": {},
-									"FilmDimSource": {},
-									"customerDIM": {},
-									"FilmDIM": {}
-								}
-							},
-							"staging": {},
-							"compute": {
-								"coreCount": 8,
-								"computeType": "General"
-							},
-							"traceLevel": "Fine"
-						}
-					},
-					{
-						"name": "DwhFlowFact",
-						"type": "ExecuteDataFlow",
-						"dependsOn": [
-							{
-								"activity": "DwhFlowDIMS",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataflow": {
-								"referenceName": "DwhFlowFact",
-								"type": "DataFlowReference",
-								"parameters": {},
-								"datasetParameters": {
-									"sourceStagingRental": {},
-									"factRental": {},
-									"DIMFILM": {},
-									"inventoryStaging": {},
-									"DimCunstomer": {},
-									"rentalfact": {}
-								}
-							},
-							"staging": {},
-							"compute": {
-								"coreCount": 8,
-								"computeType": "General"
-							},
-							"traceLevel": "Fine"
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"annotations": [],
-				"lastPublishTime": "2025-09-23T09:45:05Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/dataflows/StagingFlow')]",
-				"[concat(variables('factoryId'), '/dataflows/DwhFlowDIMS')]",
-				"[concat(variables('factoryId'), '/dataflows/DwhFlowFact')]"
+				"[concat(variables('factoryId'), '/datasets/StagingFilm')]",
+				"[concat(variables('factoryId'), '/datasets/StagingPayment')]"
 			]
 		}
 	]
