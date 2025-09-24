@@ -21,6 +21,8 @@
 					{
 						"name": "StagingFlow",
 						"type": "ExecuteDataFlow",
+						"state": "Inactive",
+						"onInactiveMarkAs": "Succeeded",
 						"dependsOn": [],
 						"policy": {
 							"timeout": "0.12:00:00",
@@ -102,8 +104,6 @@
 					{
 						"name": "DwhFlowFact",
 						"type": "ExecuteDataFlow",
-						"state": "Inactive",
-						"onInactiveMarkAs": "Succeeded",
 						"dependsOn": [
 							{
 								"activity": "DwhFlowDIMS",
@@ -131,6 +131,7 @@
 									"DIMFILM": {},
 									"inventoryStaging": {},
 									"DimCunstomer": {},
+									"payementinfo": {},
 									"rentalfact": {}
 								}
 							},
